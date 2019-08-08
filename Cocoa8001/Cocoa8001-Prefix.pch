@@ -1,0 +1,11 @@
+#ifdef __OBJC__
+#import <Cocoa/Cocoa.h>
+#import <AudioToolbox/AudioToolbox.h>
+#import <CoreVideo/CoreVideo.h>
+#endif
+
+#ifdef __cplusplus
+#include <deque>
+#include <string>
+#include <vector>
+#endif
