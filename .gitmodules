@@ -1,0 +1,3 @@
+[submodule "gamepad-osx"]
+	path = gamepad-osx
+	url = https://github.com/suzukiplan/gamepad-osx.git
