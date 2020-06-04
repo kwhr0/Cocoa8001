@@ -39,6 +39,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 - (id)init {
 	[super init];
 	if (self) {
+		_appDelegate = [[NSApplication sharedApplication] delegate];
 		CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
 		CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, self);
 		CVDisplayLinkStart(displayLink);
@@ -72,7 +73,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 - (void)dumpProfile {
 	if (!sym.empty()) {
 		std::vector<Sym>::iterator i;
-		i = std::find_if(sym.begin(), sym.end(), [](Sym &sym) { return sym.s.substr(0, 5) == "idle "; });
+		i = std::find_if(sym.begin(), sym.end(), [](Sym &s) { return s.s.substr(0, 5) == "idle "; });
 		if (i != sym.end()) sym.erase(i);
 		std::sort(sym.begin(), sym.end(), cmp_n);
 		int t = 0;
@@ -113,31 +114,28 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 		closing = CLOSING_READY;
 		return FALSE;
 	}
-	BOOL focus = [[[NSApplication sharedApplication] keyWindow] firstResponder] == _view;
-	if (focus) {
+	if (_view.focus) {
 		NSUInteger mod = [NSEvent modifierFlags];
 		pc8001.KeyChanged(68, !(mod & NSAlternateKeyMask));
 		pc8001.KeyChanged(69, !(mod & NSAlphaShiftKeyMask));
 		pc8001.KeyChanged(70, !(mod & NSShiftKeyMask));
 		pc8001.KeyChanged(71, !(mod & NSControlKeyMask));
 	}
-	_view.focus = focus;
 	if (++_blink == BLINK_INTERVAL) _view.needsRefresh = YES;
 	if (_blink >= BLINK_INTERVAL << 1) {
 		_view.needsRefresh = YES;
 		_blink = 0;
 		_blinkMask = !_blinkMask;
 	}
-	AppDelegate *ad = [[NSApplication sharedApplication] delegate];
-	int clockN = SPEED_COEF * sampleN * (pc8001.CheckKeyScan() ? ad.cpuClock : ad.cpuClockBoost);
+	int clockN = SPEED_COEF * sampleN * (pc8001.CheckKeyScan() ? _appDelegate.cpuClock : _appDelegate.cpuClockBoost);
 	int b = pc8001.GetBeep();
 	clockofs = 0;
 	_view.active = pc8001.CRTCIsActive();
-	if (focus) {
+	if (_view.focus) {
 		beepHist.clear();
 		beepHistP = &beepHist;
 		const double DMA_CYCLE = 8 * (80 + 32) * 8 / 14318180.;
-		int n = (pc8001.CRTCIsActive() && !ad.beepMusic && !hexmode) || !sym.empty() ? sampleN / 44100. / DMA_CYCLE : 1;
+		int n = (pc8001.CRTCIsActive() && !_appDelegate.beepMusic && !hexmode) || !sym.empty() ? sampleN / 44100. / DMA_CYCLE : 1;
 		[self process:clockN segment:n];
 		sgCount += sampleN;
 		int sgUpdateCount = sgCount >> 9;
@@ -149,7 +147,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 			}
 			float v = 0.f;
 			for (int j = 0; j < sgUpdateCount; j++) v = pc8001.SGUpdate();
-			buf[i << 1] = buf[(i << 1) + 1] = (b & (beepmask | ad.beepMusic) ? 0.1f : 0.f) + 0.5f * v;
+			buf[i << 1] = buf[(i << 1) + 1] = (b & (beepmask | _appDelegate.beepMusic) ? 0.1f : 0.f) + 0.5f * v;
 			if (++beepcnt >= 9) beepcnt = 0, beepmask = !beepmask;
 		}
 	}
@@ -161,7 +159,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 			ready = TRUE;
 		});
 	}
-	return focus;
+	return _view.focus;
 }
 
 - (void)vsync {
@@ -170,6 +168,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 
 - (void)refresh {
 	[_view setNeedsDisplay:YES];
+	_view.focus = [[[NSApplication sharedApplication] keyWindow] firstResponder] == _view;
 }
 
 - (void)setBeep:(BOOL)beep clock:(int)clock {
@@ -205,12 +204,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 		mem[KEYIN_HOOK] = EXTENDER_CODE;
 		pc8001.SetBreak(@selector(initDone), 0);
 	}
-	else {
-		NSAlert *alert = [[NSAlert alloc] init];
-		[alert setMessageText:@"pc8001.rom not found."];
-		[alert runModal];
-		[alert release];
-	}
+	else NSLog(@"pc8001.rom not found.");
 	pc8001.SetMemoryPtr(mem);
 	pc8001.SetDoc(self);
 }
@@ -356,7 +350,7 @@ struct Header {
 		0, 14, 0, 10, 0, 11, 0, 64, 0, 0, 0, 62, 15, 0, 47, 0,
 		0, 12, 0, 1, 2, 3, 4, 5, 6, 7, 0, 8, 9, 44, 63, 0,
 		77, 0, 0, 75, 0, 0, 0, 0, 0, 72, 72, 0, 0, 0, 0, 72,
-		0, 0, 0, 64, 44, 67, 76, 72, 74, 63, 73, 66, 66, 65, 65
+		0, 0, 0, 64, 44, 67, 76, 72, 74, 63, 73, 81, 66, 80, 65, 0,
 	};
 	pc8001.KeyChanged(kbdTransTbl[code], f);
 }

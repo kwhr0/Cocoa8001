@@ -14,6 +14,7 @@ struct Sym {
 };
 
 @class MyViewGL;
+@class AppDelegate;
 
 @interface MyDocument : NSDocument {
 	uint8_t mem[0x10000];
@@ -33,6 +34,7 @@ struct Sym {
 @property (nonatomic, assign) IBOutlet MyViewGL *view;
 @property (nonatomic, assign) int blink, rowCount;
 @property (nonatomic, assign) BOOL blinkMask;
+@property (nonatomic, assign) AppDelegate *appDelegate;
 
 - (void)key:(int)code isUp:(BOOL)f;
 - (void)setBeep:(BOOL)beep clock:(int)clock;

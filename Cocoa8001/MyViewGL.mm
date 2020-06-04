@@ -14,6 +14,7 @@ void LoadFont() {
 		fread(sFont, 2048, 1, fi);
 		fclose(fi);
 	}
+	else NSLog(@"pc8001.fon not found.");
 }
 
 #ifdef USE_GL3

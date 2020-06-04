@@ -17,7 +17,7 @@ class MyGL;
 
 @interface MyViewGL : MY_SUPER {
 	int curAtr, graph, color, cursX, cursY;
-	BOOL _width80, _height25, _colorMode, _active, _focus, _needsRefresh, _rotation;
+	BOOL _needsRefresh, _rotation;
 	MyGL *gl;
 	GLfloat *vtx;
 #ifndef USE_GL3
