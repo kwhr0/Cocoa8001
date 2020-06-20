@@ -12,5 +12,6 @@
 
 @property (nonatomic, assign) double cpuClock, cpuClockBoost;
 @property (nonatomic, assign) BOOL beepMusic;
+@property (nonatomic, assign) int sock;
 
 @end

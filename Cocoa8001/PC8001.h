@@ -1,4 +1,5 @@
 #include "Z80.h"
+#include <queue>
 
 @class MyDocument;
 @class MyViewGL;
@@ -99,4 +100,5 @@ private:
 	CRTController crtc;
 	SN76489A sg;
 	DMA dma;
+	std::queue<char> recvQ;
 };

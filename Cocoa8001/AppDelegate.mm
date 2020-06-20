@@ -3,6 +3,10 @@
 #import "MyDocument.h"
 #import "MyViewGL.h"
 #import "gamepad.h"
+#include <arpa/inet.h>
+
+#define ADDR	"127.0.0.1"
+#define PORT	10023
 
 static void audioCallback(float *buf, int n) {
 	BOOL f = FALSE;
@@ -36,8 +40,19 @@ static void audioCallback(float *buf, int n) {
 	LoadFont();
 	AudioSetup(&audioCallback);
 	AudioStart();
+	//
 	gamepad_ctx = gamepad_init(1, 0, 0);
 	gamepad_set_callback(gamepad_ctx, Key::gamepadCallback);
+	//
+	_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (_sock >= 0) {
+		struct sockaddr_in addr = {
+			.sin_family = AF_INET,
+			.sin_addr = inet_addr(ADDR),
+			.sin_port = PORT,
+		};
+		if (connect(_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) _sock = -1;
+	}
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification {
@@ -48,6 +63,8 @@ static void audioCallback(float *buf, int n) {
 	[def synchronize];
 	//
 	gamepad_term(gamepad_ctx);
+	//
+	if (_sock >= 0) close(_sock);
 }
 
 - (void)applicationWillBecomeActive:(NSNotification *)notification {

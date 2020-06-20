@@ -67,7 +67,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 }
 
 - (void)windowControllerDidLoadNib:(NSWindowController *)aController {
-	if ([self.displayName rangeOfString:@"_r."].location != NSNotFound) [_view rotation];
+	[_view setRotation:[self.displayName rangeOfString:@"_r."].location != NSNotFound];
 }
 
 - (void)dumpProfile {
@@ -101,11 +101,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 	pc8001.IncBoostTimer();
 	_view.needsRefresh |= memcmp(lastVRAM, &mem[pc8001.GetVRAM()], sizeof(lastVRAM)) != 0;
 	memcpy(lastVRAM, &mem[pc8001.GetVRAM()], sizeof(lastVRAM));
-#ifndef USE_CA
-	if (_view.needsRefresh) {
-		[self performSelectorOnMainThread:@selector(refresh) withObject:nil waitUntilDone:NO];
-	}
-#endif
+	if (_view.needsRefresh) [self performSelectorOnMainThread:@selector(refresh) withObject:nil waitUntilDone:NO];
 }
 
 - (BOOL)run:(int)sampleN buf:(float *)buf {
@@ -167,7 +163,9 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 }
 
 - (void)refresh {
+#ifndef USE_CA
 	[_view setNeedsDisplay:YES];
+#endif
 	_view.focus = [[[NSApplication sharedApplication] keyWindow] firstResponder] == _view;
 }
 

@@ -243,9 +243,9 @@ struct MyGL : SimpleGL {
 #endif
 }
 
-- (void)rotation {
+- (void)setRotation:(BOOL)f {
 	const CGFloat TITLE = 22;
-	_rotation = !_rotation;
+	_rotation = f;
 	NSRect rect = self.window.frame;
 	rect.size.width = _rotation ? 400 : 640;
 	rect.size.height = (_rotation ? 640 : 400) + TITLE;

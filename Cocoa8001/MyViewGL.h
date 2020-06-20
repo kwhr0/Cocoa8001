@@ -17,7 +17,7 @@ class MyGL;
 
 @interface MyViewGL : MY_SUPER {
 	int curAtr, graph, color, cursX, cursY;
-	BOOL _needsRefresh, _rotation;
+	BOOL _rotation;
 	MyGL *gl;
 	GLfloat *vtx;
 #ifndef USE_GL3
@@ -29,7 +29,7 @@ class MyGL;
 - (MyDocument *)document;
 - (void)close;
 - (void)setCursX:(int)x Y:(int)y;
-- (void)rotation;
+- (void)setRotation:(BOOL)f;
 
 @property (nonatomic, assign) BOOL width80, height25, colorMode, active, focus, needsRefresh;
 

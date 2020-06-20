@@ -3,8 +3,11 @@
 #import "MyViewGL.h"
 #import "AppDelegate.h"
 #import "gamepad.h"
+#import <sys/socket.h>
 
 int32_t PC8001::input(u_short adr) {
+	#define BUFSIZE 256
+	char buf[BUFSIZE];
 	int32_t r = 0;
 	switch (adr & 0xf0) {
 		case 0:
@@ -21,6 +24,16 @@ int32_t PC8001::input(u_short adr) {
 			r = (key.Get(1) & 0x80) | (key.Get(0) >> 1 & 0x20) | (key.Get(0) >> 1 & 8) |
 				(key.Get(0) << 4 & 0x40) | (key.Get(1) << 4 & 0x10) | (key.Get(9) >> 6 & 1) | 6;
 			boostTimer = 0;
+			break;
+		case 0xf0:
+			r = (int32_t)recv(doc.appDelegate.sock, buf, BUFSIZE, MSG_DONTWAIT);
+			if (r > 0)
+				for (int i = 0; i < r; i++) recvQ.push(buf[i]);
+			if (recvQ.empty()) r = 0;
+			else {
+				r = recvQ.front();
+				recvQ.pop();
+			}
 			break;
 	}
 	return r;
@@ -55,6 +68,9 @@ void PC8001::output(u_short adr, u_char data) {
 			break;
 		case 0x90:
 			sg.Set(data);
+			break;
+		case 0xf0:
+			send(doc.appDelegate.sock, &data, 1, MSG_DONTWAIT);
 			break;
 	}
 }
@@ -98,6 +114,7 @@ void Key::Changed(int v, int f) {
 	if (f) d[port] |= mask;
 	else d[port] &= ~mask;
 }
+
 int Key::Get(int x) {
 	x &= 0xf;
 	int a = gamepadDir, b = gamepadBtn;
