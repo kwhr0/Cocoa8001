@@ -89,7 +89,6 @@ private:
 #if defined(__OBJC__) && !TARGET_OS_IPHONE
 @interface SimpleGLLayer : CAOpenGLLayer {
 	BOOL *needsRefreshP;
-	NSView *_view;
 }
 @property (nonatomic, assign) NSView *view;
 @end

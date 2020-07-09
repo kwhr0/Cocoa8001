@@ -2,6 +2,9 @@
 #import <Cocoa/Cocoa.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreVideo/CoreVideo.h>
+#ifdef USE_METAL
+#import <MetalKit/MetalKit.h>
+#endif
 #endif
 
 #ifdef __cplusplus

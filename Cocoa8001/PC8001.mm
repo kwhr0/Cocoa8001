@@ -1,6 +1,6 @@
 #import "PC8001.h"
 #import "MyDocument.h"
-#import "MyViewGL.h"
+#import "MyView.h"
 #import "AppDelegate.h"
 #import "gamepad.h"
 #import <sys/socket.h>
@@ -136,31 +136,33 @@ void Printer::Strobe(int pstb, int pch) {
 }
 
 void RealTimeClock::Strobe(int v) {
-	CFGregorianDate dt;
-	int i;
+	CFCalendarRef cal = CFCalendarCreateWithIdentifier(NULL, kCFGregorianCalendar);
+	int i, year, month, day, hour, minute, second;
 	switch (v & 0xf) {
 		case 1:
 			pos = 0;
 			for (i = 0; i < 5; i++) timetmp[i] = 0;
-			dt = CFAbsoluteTimeGetGregorianDate(CFAbsoluteTimeGetCurrent() + tofs, NULL);
-			time[4] = dt.month << 4;
-			time[3] = (dt.day / 10 << 4) + dt.day % 10;
-			time[2] = (dt.hour / 10 << 4) + dt.hour % 10;
-			time[1] = (dt.minute / 10 << 4) + dt.minute % 10;
-			time[0] = ((int)dt.second / 10 << 4) + (int)dt.second % 10;
+			CFCalendarDecomposeAbsoluteTime(cal, CFAbsoluteTimeGetCurrent() + tofs, "yMdHms", &year, &month, &day, &hour, &minute, &second);
+			time[4] = month << 4;
+			time[3] = (day / 10 << 4) + day % 10;
+			time[2] = (hour / 10 << 4) + hour % 10;
+			time[1] = (minute / 10 << 4) + minute % 10;
+			time[0] = (second / 10 << 4) + second % 10;
 			data = time[0] & 1;
 			break;
 		case 2:
 			for (i = 0; i < 5; i++) time[i] = timetmp[i];
-			dt.year = 1979;
-			dt.month = timetmp[4] >> 4;
-			dt.day = (timetmp[3] >> 4) * 10 + (timetmp[3] & 15);
-			dt.hour = (timetmp[2] >> 4) * 10 + (timetmp[2] & 15);
-			dt.minute = (timetmp[1] >> 4) * 10 + (timetmp[1] & 15);
-			dt.second = (timetmp[0] >> 4) * 10 + (timetmp[0] & 15);
-			tofs = CFGregorianDateGetAbsoluteTime(dt, NULL) - CFAbsoluteTimeGetCurrent();
+			year = 1979;
+			month = timetmp[4] >> 4;
+			day = (timetmp[3] >> 4) * 10 + (timetmp[3] & 15);
+			hour = (timetmp[2] >> 4) * 10 + (timetmp[2] & 15);
+			minute = (timetmp[1] >> 4) * 10 + (timetmp[1] & 15);
+			second = (timetmp[0] >> 4) * 10 + (timetmp[0] & 15);
+			CFCalendarComposeAbsoluteTime(cal, &tofs, "yMdHms", year, month, day, hour, minute, second);
+			tofs -= CFAbsoluteTimeGetCurrent();
 			break;
 	}
+	CFRelease(cal);
 }
 
 void RealTimeClock::Shift(int v) {
@@ -171,7 +173,7 @@ void RealTimeClock::Shift(int v) {
 	}
 }
 
-void CRTController::Command(MyViewGL *view, int data) {
+void CRTController::Command(MyView *view, int data) {
 	switch (data) {
 		case 0:
 			seq = 5;
@@ -187,7 +189,7 @@ void CRTController::Command(MyViewGL *view, int data) {
 	}
 }
 
-void CRTController::Parameter(MyViewGL *view, int data) {
+void CRTController::Parameter(MyView *view, int data) {
 	if (seq) {
 		switch (seq--) {
 			case 3:

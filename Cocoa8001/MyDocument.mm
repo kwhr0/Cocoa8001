@@ -1,7 +1,7 @@
 #import "MyDocument.h"
 #import "MyWindowController.h"
 #import "AppDelegate.h"
-#import "MyViewGL.h"
+#import "MyView.h"
 
 #define ROM_AMOUNT		0x8000
 #define MEMORY_AMOUNT	0x10000
@@ -27,7 +27,7 @@ static int getHex(char *&p, int n) {
 }
 
 static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *now, const CVTimeStamp *outputTime, CVOptionFlags flagsIn, CVOptionFlags *flagsOut, void *context) {
-	[(MyDocument *)context vsync];
+	[(__bridge MyDocument *)context vsync];
 	return kCVReturnSuccess;
 }
 
@@ -37,13 +37,11 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 @implementation MyDocument
 
 - (id)init {
-	[super init];
-	if (self) {
-		_appDelegate = [[NSApplication sharedApplication] delegate];
-		CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
-		CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, self);
-		CVDisplayLinkStart(displayLink);
-	}
+	if (!(self = [super init])) return nil;
+	_appDelegate = [[NSApplication sharedApplication] delegate];
+	CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
+	CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, (__bridge void *)self);
+	CVDisplayLinkStart(displayLink);
 	return self;
 }
 
@@ -63,7 +61,6 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 	MyWindowController *windowController = [[MyWindowController alloc] initWithWindowNibName:@"MyDocument"];
 	[self addWindowController:windowController];
 	[[windowController window] makeKeyAndOrderFront:windowController];
-	[windowController release];
 }
 
 - (void)windowControllerDidLoadNib:(NSWindowController *)aController {
@@ -163,7 +160,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 }
 
 - (void)refresh {
-#ifndef USE_CA
+#if defined(USE_METAL) || !defined(USE_CA)
 	[_view setNeedsDisplay:YES];
 #endif
 	_view.focus = [[[NSApplication sharedApplication] keyWindow] firstResponder] == _view;
@@ -262,7 +259,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 	[self loadBASIC];
 	mem[KEYIN_HOOK] = 0xcd;
 	mem[LOAD_HOOK] = EXTENDER_CODE;
-	loadData = [data retain];
+	loadData = data;
 	pc8001.SetBreak(@selector(callbackLoad), 0);
 	ready = YES;
 	return YES;
@@ -310,7 +307,6 @@ struct Header {
 	}
 	mem[LOAD_HOOK] = 0xcd;
 	pc8001.SetBreak(NULL, head.lenb ? 0x6012 : head.jmp);
-	[loadData release];
 }
 
 - (NSData *)dataOfType:(NSString *)typeName error:(NSError **)outError {
@@ -321,7 +317,7 @@ struct Header {
 	}
 	while (saving)
 		;
-	return [saveData autorelease];
+	return saveData;
 }
 
 - (void)callbackSave {

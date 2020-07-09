@@ -10,7 +10,7 @@
 		E461AE7D2168BD570027A327 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = E461AE7B2168BD570027A327 /* MainMenu.xib */; };
 		E461AE802168BD5C0027A327 /* MyDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = E461AE7E2168BD5C0027A327 /* MyDocument.xib */; };
 		E479486C215F2EEB00E55684 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E479486B215F2EEA00E55684 /* CoreVideo.framework */; };
-		E48CD1FD1A820F2200F7B201 /* MyViewGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = E48CD1FC1A820F2200F7B201 /* MyViewGL.mm */; };
+		E48CD1FD1A820F2200F7B201 /* MyView.mm in Sources */ = {isa = PBXBuildFile; fileRef = E48CD1FC1A820F2200F7B201 /* MyView.mm */; };
 		E48CD1FF1A820F6C00F7B201 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E48CD1FE1A820F6C00F7B201 /* OpenGL.framework */; };
 		E498A7131A775C63006B91BC /* Audio.mm in Sources */ = {isa = PBXBuildFile; fileRef = E498A7121A775C63006B91BC /* Audio.mm */; };
 		E4CB72E0215B92D30033B3EC /* MyWindowController.mm in Sources */ = {isa = PBXBuildFile; fileRef = E4CB72DF215B92D30033B3EC /* MyWindowController.mm */; };
@@ -35,13 +35,17 @@
 		E461AE7F2168BD5C0027A327 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MyDocument.xib; sourceTree = "<group>"; };
 		E461AE812168C0310027A327 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E479486B215F2EEA00E55684 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
-		E48CD1FB1A820F2200F7B201 /* MyViewGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyViewGL.h; sourceTree = "<group>"; };
-		E48CD1FC1A820F2200F7B201 /* MyViewGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyViewGL.mm; sourceTree = "<group>"; };
+		E48CD1FB1A820F2200F7B201 /* MyView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyView.h; sourceTree = "<group>"; };
+		E48CD1FC1A820F2200F7B201 /* MyView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyView.mm; sourceTree = "<group>"; };
 		E48CD1FE1A820F6C00F7B201 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		E498A7111A775C63006B91BC /* Audio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Audio.h; sourceTree = "<group>"; };
 		E498A7121A775C63006B91BC /* Audio.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Audio.mm; sourceTree = "<group>"; };
 		E4CB72DE215B92D30033B3EC /* MyWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyWindowController.h; sourceTree = "<group>"; };
 		E4CB72DF215B92D30033B3EC /* MyWindowController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MyWindowController.mm; sourceTree = "<group>"; };
+		E4D1A09B249E2B8A00410719 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		E4D1A09D249E2D8000410719 /* Shaders.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		E4D1A09E249E2D8000410719 /* ShaderTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
+		E4D1A0A0249E2E5800410719 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		E4DB7F8622EEC4F3004861B6 /* gamepad.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gamepad.c; path = "gamepad-osx/gamepad.c"; sourceTree = SOURCE_ROOT; };
 		E4DB7F8722EEC4F3004861B6 /* gamepad.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gamepad.h; path = "gamepad-osx/gamepad.h"; sourceTree = SOURCE_ROOT; };
 		E4E3B64A1A83114C0087A395 /* Shader.fsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Shader.fsh; sourceTree = "<group>"; };
@@ -103,6 +107,8 @@
 		E4F96CE118248E3400E62CB6 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E4D1A0A0249E2E5800410719 /* Metal.framework */,
+				E4D1A09B249E2B8A00410719 /* MetalKit.framework */,
 				E479486B215F2EEA00E55684 /* CoreVideo.framework */,
 				E4EBBA67212510FF00CB2878 /* IOKit.framework */,
 				E4E87DAF21009B29004C46C8 /* QuartzCore.framework */,
@@ -125,8 +131,8 @@
 				E4F96D1E18248F8B00E62CB6 /* main.mm */,
 				E4F96D1F18248F8B00E62CB6 /* MyDocument.h */,
 				E4F96D2018248F8B00E62CB6 /* MyDocument.mm */,
-				E48CD1FB1A820F2200F7B201 /* MyViewGL.h */,
-				E48CD1FC1A820F2200F7B201 /* MyViewGL.mm */,
+				E48CD1FB1A820F2200F7B201 /* MyView.h */,
+				E48CD1FC1A820F2200F7B201 /* MyView.mm */,
 				E4CB72DE215B92D30033B3EC /* MyWindowController.h */,
 				E4CB72DF215B92D30033B3EC /* MyWindowController.mm */,
 				E4F96D2318248F8B00E62CB6 /* PC8001.h */,
@@ -136,8 +142,10 @@
 				E4E3B64A1A83114C0087A395 /* Shader.fsh */,
 				E4E3B6511A8341F20087A395 /* Shader.gsh */,
 				E4E3B64B1A83114C0087A395 /* Shader.vsh */,
-				E4F96D2518248F8B00E62CB6 /* Z80.cpp */,
+				E4D1A09D249E2D8000410719 /* Shaders.metal */,
+				E4D1A09E249E2D8000410719 /* ShaderTypes.h */,
 				E4F96D2618248F8B00E62CB6 /* Z80.h */,
+				E4F96D2518248F8B00E62CB6 /* Z80.cpp */,
 				E4F96CE918248E3400E62CB6 /* Supporting Files */,
 			);
 			path = Cocoa8001;
@@ -225,7 +233,7 @@
 				E4F96D2B18248F8B00E62CB6 /* Z80.cpp in Sources */,
 				E4DB7F8822EEC4F3004861B6 /* gamepad.c in Sources */,
 				E4CB72E0215B92D30033B3EC /* MyWindowController.mm in Sources */,
-				E48CD1FD1A820F2200F7B201 /* MyViewGL.mm in Sources */,
+				E48CD1FD1A820F2200F7B201 /* MyView.mm in Sources */,
 				E4E3B6501A8312480087A395 /* SimpleGL.mm in Sources */,
 				E4F96D1B18248F1E00E62CB6 /* AppDelegate.mm in Sources */,
 				E4F96D2A18248F8B00E62CB6 /* PC8001.mm in Sources */,
@@ -330,7 +338,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
 				COMBINE_HIDPI_IMAGES = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
@@ -362,7 +370,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
 				COMBINE_HIDPI_IMAGES = NO;
 				COPY_PHASE_STRIP = NO;
 				GCC_C_LANGUAGE_STANDARD = c11;

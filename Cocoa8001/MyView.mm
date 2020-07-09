@@ -1,6 +1,9 @@
-#import "MyViewGL.h"
+#import "MyView.h"
 #import "MyDocument.h"
 #import "SimpleGL.h"
+#ifdef USE_METAL
+#import "ShaderTypes.h"
+#endif
 
 #define STRIDE				24
 
@@ -47,12 +50,29 @@ struct MyGL : SimpleGL {
 };
 #endif
 
-@implementation MyViewGL
+@implementation MyView
 
 - (void)awakeFromNib {
 	[[self window] makeFirstResponder:self];
 	cursY = -1;
-#ifdef USE_CA
+#if defined(USE_METAL)
+	self.paused = YES;
+	self.enableSetNeedsDisplay = YES;
+	self.device = MTLCreateSystemDefaultDevice();
+	_chr = [self.device newBufferWithLength:80 * 25 * sizeof(Chr) options:MTLResourceStorageModeShared];
+	_vtx = [self.device newBufferWithLength:80 * 25 * 6 * sizeof(Vtx) options:MTLResourceStorageModePrivate];
+	_prm = [self.device newBufferWithLength:sizeof(Prm) options:MTLResourceStorageModeShared];
+	_rot = [self.device newBufferWithLength:sizeof(bool) options:MTLResourceStorageModeShared];
+	id<MTLLibrary> lib = [self.device newDefaultLibrary];
+	id<MTLFunction> func = [lib newFunctionWithName:@"geometryShader"];
+	_computePipelineState = [self.device newComputePipelineStateWithFunction:func error:nil];
+	MTLRenderPipelineDescriptor *pd = [[MTLRenderPipelineDescriptor alloc] init];
+	pd.vertexFunction = [lib newFunctionWithName:@"vertexShader"];
+	pd.fragmentFunction = [lib newFunctionWithName:@"fragmentShader"];
+	pd.colorAttachments[0].pixelFormat = self.colorPixelFormat;
+	_renderPipelineState = [self.device newRenderPipelineStateWithDescriptor:pd error:nil];
+	_commandQueue = [self.device newCommandQueue];
+#elif defined(USE_CA)
 	SimpleGLLayerSetup(self, &_needsRefresh);
 #endif
 }
@@ -101,7 +121,10 @@ struct MyGL : SimpleGL {
 				dp2[TEX_X * y + x] = gf ? 0xffffffff : 0xff000000;
 			}
 	}
-#ifdef USE_GL3
+#if defined(USE_METAL)
+	_tex = [self.device newTextureWithDescriptor:[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:TEX_X height:TEX_Y mipmapped:FALSE]];
+	[_tex replaceRegion:MTLRegionMake3D(0, 0, 0, TEX_X, TEX_Y, 1) mipmapLevel:0 withBytes:buf bytesPerRow:4 * TEX_X];
+#elif defined(USE_GL3)
 	gl = new MyGL;
 	gl->BindTexture();
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEX_X, TEX_Y, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
@@ -127,6 +150,9 @@ struct MyGL : SimpleGL {
 	if (!_colorMode) color = 7;
 	int sx = _width80 ? 1 : 2, ly = _height25 ? 25 : 20;
 	bool b = self.document.blink < BLINK_INTERVAL;
+#ifdef USE_METAL
+	Chr *p = (Chr *)_chr.contents;
+#else
 	GLfloat *p = vtx;
 #ifdef USE_GL3
 	int lx = _width80 ? 80 : 40;
@@ -134,6 +160,7 @@ struct MyGL : SimpleGL {
 	GLfloat *tp = tex;
 	GLuint *cp = vtxcolor;
 	GLfloat xd = _width80 ? .025f : .05f, yd = _height25 ? .08f : .1f, tyd = (_height25 ? .8f : 1.f) / 2.f;
+#endif
 #endif
 	for (int y = 0; y < ly; y++) {
 		uint8 *atr = &vram[80];
@@ -154,7 +181,14 @@ struct MyGL : SimpleGL {
 			}
 			BOOL rev = (curAtr & 4) >> 2 ^ (b && _focus && cursX == x && cursY == y);
 			BOOL secret = curAtr & 1 || ((curAtr & 2) >> 1 && self.document.blinkMask && !b);
-#ifdef USE_GL3
+#if defined(USE_METAL)
+			p->code = vram[x];
+			p->graph = graph;
+			p->color = color;
+			p->rev = rev;
+			p->secret = secret;
+			p++;
+#elif defined(USE_GL3)
 			p[0] = x;
 			p[1] = y;
 			p[2] = graph;
@@ -186,6 +220,7 @@ struct MyGL : SimpleGL {
 		}
 		vram += 120;
 	}
+#ifndef USE_METAL
 #ifdef USE_GL3
 	gl->BindBuffer();
 	glBufferData(GL_ARRAY_BUFFER, STRIDE * lx * ly, vtx, GL_STATIC_DRAW);
@@ -196,17 +231,49 @@ struct MyGL : SimpleGL {
 	glTexCoordPointer(2, GL_FLOAT, 0, tex);
 	glDrawArrays(GL_TRIANGLES, 0, GLsizei(cp - vtxcolor));
 #endif
+#endif
 }
 
 - (void)drawRect:(NSRect)rect {
+	_needsRefresh = false;
+	uint8 *vram = self.document.vram;
+#ifdef USE_METAL
+	int w = _width80 ? 80 : 40, h = _height25 ? 25 : 20;
+	if (!_tex) [self prepare];
+	[self drawSub:vram revmask:FALSE secretmask:FALSE];
+	((Prm *)_prm.contents)->pixW = _width80 ? 8 : 16;
+	((Prm *)_prm.contents)->pixH = _height25 ? 16 : 20;
+	*(bool *)_rot.contents = _rotation;
+	id<MTLCommandBuffer> cb = [_commandQueue commandBuffer];
+	id<MTLComputeCommandEncoder> cce = [cb computeCommandEncoder];
+	[cce setComputePipelineState:_computePipelineState];
+	[cce setBuffer:_chr offset:0 atIndex:0];
+	[cce setBuffer:_vtx offset:0 atIndex:1];
+	[cce setBuffer:_prm offset:0 atIndex:2];
+	[cce dispatchThreadgroups:MTLSizeMake(h, 1, 1) threadsPerThreadgroup:MTLSizeMake(w, 1, 1)];
+	[cce endEncoding];
+	[cb commit];
+	//
+	cb = [_commandQueue commandBuffer];
+	if (self.currentRenderPassDescriptor) {
+		id<MTLRenderCommandEncoder> rce = [cb renderCommandEncoderWithDescriptor:self.currentRenderPassDescriptor];
+		[rce setViewport:(MTLViewport){ 0.0, 0.0, self.drawableSize.width, self.drawableSize.height, -1.0, 1.0 }];
+		[rce setRenderPipelineState:_renderPipelineState];
+		[rce setVertexBuffer:_vtx offset:0 atIndex:0];
+		[rce setVertexBuffer:_rot offset:0 atIndex:1];
+		[rce setFragmentTexture:_tex atIndex:0];
+		[rce drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 * w * h];
+		[rce endEncoding];
+		[cb presentDrawable:self.currentDrawable];
+	}
+	[cb commit];
+#else
 	static const GLfloat idtMtx[] = {
 		1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1
 	};
 	static const GLfloat rotMtx[] = {
 		0, 1, 0, 0,  -1, 0, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1
 	};
-	_needsRefresh = false;
-	uint8 *vram = self.document.vram;
 #ifdef USE_GL3
 	if (!_active || !self.document) {
 		glClearColor(0.f, 0.f, 0.f, 1.f);
@@ -239,6 +306,7 @@ struct MyGL : SimpleGL {
 	}
 #ifndef USE_CA
 	glFlush();
+#endif
 #endif
 #endif
 }

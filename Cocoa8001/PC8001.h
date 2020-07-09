@@ -2,7 +2,7 @@
 #include <queue>
 
 @class MyDocument;
-@class MyViewGL;
+@class MyView;
 
 class Key {
 public:
@@ -36,15 +36,16 @@ public:
 	void Shift(int);
 	int Get() const { return data; }
 private:
-	int data, pos, tofs;
+	int data, pos;
 	int time[5], timetmp[5];
+	CFAbsoluteTime tofs;
 };
 
 class CRTController {
 public:
 	CRTController() : seq(0), x(0), y(0), active(false) {}
-	void Command(MyViewGL *, int);
-	void Parameter(MyViewGL *, int);
+	void Command(MyView *, int);
+	void Parameter(MyView *, int);
 	bool isActive() const { return active; }
 private:
 	int seq, x, y;

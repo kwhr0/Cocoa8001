@@ -1,7 +1,7 @@
 #import "AppDelegate.h"
 #import "Audio.h"
 #import "MyDocument.h"
-#import "MyViewGL.h"
+#import "MyView.h"
 #import "gamepad.h"
 #include <arpa/inet.h>
 
@@ -10,13 +10,13 @@
 
 static void audioCallback(float *buf, int n) {
 	BOOL f = FALSE;
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSArray *docs = [[NSDocumentController sharedDocumentController] documents];
-	for (int i = 0; i < docs.count; i++) {
-		id doc = [docs objectAtIndex:i];
-		if ([doc isKindOfClass:[MyDocument class]]) f |= [(MyDocument *)doc run:n buf:buf];
+	@autoreleasepool {
+		NSArray *docs = [[NSDocumentController sharedDocumentController] documents];
+		for (int i = 0; i < docs.count; i++) {
+			id doc = [docs objectAtIndex:i];
+			if ([doc isKindOfClass:[MyDocument class]]) f |= [(MyDocument *)doc run:n buf:buf];
+		}
 	}
-	[pool drain];
 	if (!f) for (int i = 0; i < n << 1; i++) buf[i] = 0.f;
 }
 

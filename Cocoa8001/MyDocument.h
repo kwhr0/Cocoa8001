@@ -13,7 +13,7 @@ struct Sym {
 	std::string s;
 };
 
-@class MyViewGL;
+@class MyView;
 @class AppDelegate;
 
 @interface MyDocument : NSDocument {
@@ -31,10 +31,10 @@ struct Sym {
 	std::vector<Sym> sym;
 }
 
-@property (nonatomic, assign) IBOutlet MyViewGL *view;
+@property (nonatomic, weak) IBOutlet MyView *view;
 @property (nonatomic, assign) int blink, rowCount;
 @property (nonatomic, assign) BOOL blinkMask;
-@property (nonatomic, assign) AppDelegate *appDelegate;
+@property (nonatomic, weak) AppDelegate *appDelegate;
 
 - (void)key:(int)code isUp:(BOOL)f;
 - (void)setBeep:(BOOL)beep clock:(int)clock;
