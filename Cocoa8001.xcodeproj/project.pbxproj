@@ -358,7 +358,7 @@
 				SDKROOT = macosx;
 				SYSTEM_HEADER_SEARCH_PATHS = "";
 				USE_HEADERMAP = YES;
-				VALID_ARCHS = x86_64;
+				VALID_ARCHS = "x86_64 arm64";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -388,7 +388,7 @@
 				SDKROOT = macosx;
 				SYSTEM_HEADER_SEARCH_PATHS = "";
 				USE_HEADERMAP = YES;
-				VALID_ARCHS = x86_64;
+				VALID_ARCHS = "x86_64 arm64";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

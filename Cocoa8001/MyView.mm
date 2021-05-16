@@ -312,11 +312,11 @@ struct MyGL : SimpleGL {
 }
 
 - (void)setRotation:(BOOL)f {
-	const CGFloat TITLE = 22;
-	_rotation = f;
 	NSRect rect = self.window.frame;
+    CGFloat titleHeight = rect.size.height - self.frame.size.height;
+	_rotation = f;
 	rect.size.width = _rotation ? 400 : 640;
-	rect.size.height = (_rotation ? 640 : 400) + TITLE;
+    rect.size.height = (_rotation ? 640 : 400) + titleHeight;
 	[self.window setFrame:rect display:NO];
 }
 
