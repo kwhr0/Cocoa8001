@@ -2,6 +2,7 @@
 #import "Audio.h"
 #import "MyDocument.h"
 #import "MyView.h"
+#import "PC8001.h"
 #import "gamepad.h"
 #include <arpa/inet.h>
 
@@ -19,6 +20,21 @@ static void audioCallback(float *buf, int n) {
 	}
 	if (!f) for (int i = 0; i < n << 1; i++) buf[i] = 0.f;
 }
+
+static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *now, const CVTimeStamp *outputTime, CVOptionFlags flagsIn, CVOptionFlags *flagsOut, void *context) {
+	NSArray *docs = [[NSDocumentController sharedDocumentController] documents];
+	for (int i = 0; i < docs.count; i++) {
+		id doc = [docs objectAtIndex:i];
+		if ([doc isKindOfClass:[MyDocument class]]) [(MyDocument *)doc vsync];
+	}
+	return kCVReturnSuccess;
+}
+
+@interface AppDelegate () {
+	CVDisplayLinkRef displayLink;
+	void *gamepad_ctx;
+}
+@end
 
 @implementation AppDelegate
 
@@ -41,6 +57,10 @@ static void audioCallback(float *buf, int n) {
 	AudioSetup(&audioCallback);
 	AudioStart();
 	//
+	CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
+	CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, nil);
+	CVDisplayLinkStart(displayLink);
+	//
 	gamepad_ctx = gamepad_init(1, 0, 0);
 	gamepad_set_callback(gamepad_ctx, Key::gamepadCallback);
 	//
@@ -61,6 +81,9 @@ static void audioCallback(float *buf, int n) {
 	[def setObject:[NSNumber numberWithDouble:_cpuClockBoost] forKey:@"CPU_CLOCK_BOOST"];
 	[def setObject:[NSNumber numberWithBool:_beepMusic] forKey:@"BEEP_MUSIC"];
 	[def synchronize];
+	//
+	CVDisplayLinkStop(displayLink);
+	CVDisplayLinkRelease(displayLink);
 	//
 	gamepad_term(gamepad_ctx);
 	//

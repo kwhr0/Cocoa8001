@@ -2,6 +2,8 @@
 #import "MyWindowController.h"
 #import "AppDelegate.h"
 #import "MyView.h"
+#import "PC8001.h"
+#import <sys/stat.h>
 
 #define ROM_AMOUNT		0x8000
 #define MEMORY_AMOUNT	0x10000
@@ -16,6 +18,17 @@
 
 enum { CLOSING_WAIT = 1, CLOSING_READY };
 
+struct BeepHist {
+	BeepHist(int _beep, int _clock) : beep(_beep), clock(_clock) {}
+	int beep, clock;
+};
+
+struct Sym {
+	Sym(int _adr, const char *_s = "") : adr(_adr), n(0), s(_s) {}
+	int adr, n;
+	std::string s;
+};
+
 static int getHex(char *&p, int n) {
 	int r = 0;
 	do {
@@ -26,22 +39,30 @@ static int getHex(char *&p, int n) {
 	return r;
 }
 
-static CVReturn MyDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *now, const CVTimeStamp *outputTime, CVOptionFlags flagsIn, CVOptionFlags *flagsOut, void *context) {
-	[(__bridge MyDocument *)context vsync];
-	return kCVReturnSuccess;
-}
-
 static bool cmp_adr(const Sym &a, const Sym &b) { return a.adr < b.adr; }
 static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
+
+@interface MyDocument () {
+	uint8_t mem[0x10000];
+	uint8_t lastVRAM[120 * 25];
+	PC8001 pc8001;
+	NSData *loadData, *saveData;
+	int mstart, mlen, clockofs, beepcnt, beepmask, sgCount;
+	volatile int closing;
+	volatile BOOL saving, ready;
+	std::deque<BeepHist> beepHist;
+	std::deque<BeepHist> *beepHistP, *beepHistC;
+	BOOL hexmode;
+	std::vector<Sym> sym;
+	struct timespec mtimespec;
+}
+@end
 
 @implementation MyDocument
 
 - (id)init {
 	if (!(self = [super init])) return nil;
 	_appDelegate = [[NSApplication sharedApplication] delegate];
-	CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
-	CVDisplayLinkSetOutputCallback(displayLink, MyDisplayLinkCallback, (__bridge void *)self);
-	CVDisplayLinkStart(displayLink);
 	return self;
 }
 
@@ -50,9 +71,6 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 		;
 	[_view close];
 	_view = nil;
-	CVDisplayLinkStop(displayLink);
-	CVDisplayLinkRelease(displayLink);
-	displayLink = nil;
 	[self dumpProfile];
 	[super close];
 }
@@ -167,7 +185,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 }
 
 - (void)setBeep:(BOOL)beep clock:(int)clock {
-	if (beepHistP) beepHistP->push_back(BeepHist(beep, clock + clockofs));
+	if (beepHistP) beepHistP->emplace_back(beep, clock + clockofs);
 }
 
 - (void)loadBASIC {
@@ -225,18 +243,32 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 		if (!fi) return YES;
 		while (fgets(s, sizeof(s), fi)) {
 			int adr;
-			if (sscanf(s, "%x", &adr) == 1 && strlen(s) > 5) sym.push_back(Sym(adr, s + 5));
+			if (sscanf(s, "%x", &adr) == 1 && strlen(s) > 5) sym.emplace_back(adr, s + 5);
 		}
 		fclose(fi);
-		sym.push_back(Sym(0xffff));
+		sym.emplace_back(0xffff);
 		return YES;
 	}
 	return NO;
 }
 
+- (BOOL)refreshIntelHex {
+	struct stat st;
+	if (stat(self.fileURL.path.fileSystemRepresentation, &st)) {
+		NSLog(@"stat error");
+		return NO;
+	}
+	if (mtimespec.tv_sec < st.st_mtimespec.tv_sec) {
+		if (![self loadIntelHex]) return NO;
+		pc8001.Reset();
+	}
+	mtimespec = st.st_mtimespec;
+	return YES;
+}
+
 - (void)becomeActive {
 	@synchronized (self) {
-		if (hexmode && [self loadIntelHex]) pc8001.Reset();
+		if (hexmode) [self refreshIntelHex];
 	}
 }
 
@@ -248,8 +280,7 @@ static bool cmp_n(const Sym &a, const Sym &b) { return a.n > b.n; }
 
 - (BOOL)readFromData:(NSData *)data ofType:(NSString *)typeName error:(NSError **)outError {
 	if ([typeName isEqualToString:@"IntelHex"]) {
-		BOOL r = [self loadIntelHex];
-		if (!r) return NO;
+		if (![self refreshIntelHex]) return NO;
 		pc8001.SetMemoryPtr(mem);
 		pc8001.SetDoc(self);
 		hexmode = YES;

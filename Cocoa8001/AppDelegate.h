@@ -3,15 +3,14 @@
 	IBOutlet id prefCpuClock;
 	IBOutlet id prefCpuClockBoost;
 	IBOutlet id prefBeepMusic;
-	void *gamepad_ctx;
 }
 
 - (IBAction)showPreference:(id)sender;
 - (IBAction)prefSet:(id)sender;
 - (IBAction)prefCancel:(id)sender;
 
-@property (nonatomic, assign) double cpuClock, cpuClockBoost;
-@property (nonatomic, assign) BOOL beepMusic;
-@property (nonatomic, assign) int sock;
+@property (nonatomic) double cpuClock, cpuClockBoost;
+@property (nonatomic) BOOL beepMusic;
+@property (nonatomic) int sock;
 
 @end

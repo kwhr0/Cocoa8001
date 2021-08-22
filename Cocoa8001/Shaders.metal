@@ -1,3 +1,5 @@
+#ifdef __METAL_MACOS__
+
 #include <metal_stdlib>
 #include "ShaderTypes.h"
 
@@ -54,3 +56,5 @@ fragment float4 fragmentShader(Data in [[stage_in]],
 	constexpr sampler ts(mag_filter::nearest, min_filter::nearest);
 	return float4(in.ofs + in.amp * (float4)tex.sample(ts, in.texcoord));
 }
+
+#endif

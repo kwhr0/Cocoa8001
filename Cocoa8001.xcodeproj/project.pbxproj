@@ -128,7 +128,6 @@
 				E498A7121A775C63006B91BC /* Audio.mm */,
 				E4DB7F8722EEC4F3004861B6 /* gamepad.h */,
 				E4DB7F8622EEC4F3004861B6 /* gamepad.c */,
-				E4F96D1E18248F8B00E62CB6 /* main.mm */,
 				E4F96D1F18248F8B00E62CB6 /* MyDocument.h */,
 				E4F96D2018248F8B00E62CB6 /* MyDocument.mm */,
 				E48CD1FB1A820F2200F7B201 /* MyView.h */,
@@ -154,10 +153,11 @@
 		E4F96CE918248E3400E62CB6 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				E4F96CF018248E3400E62CB6 /* Cocoa8001-Prefix.pch */,
+				E4F96D1E18248F8B00E62CB6 /* main.mm */,
+				E461AE812168C0310027A327 /* Info.plist */,
 				E461AE7B2168BD570027A327 /* MainMenu.xib */,
 				E461AE7E2168BD5C0027A327 /* MyDocument.xib */,
-				E461AE812168C0310027A327 /* Info.plist */,
-				E4F96CF018248E3400E62CB6 /* Cocoa8001-Prefix.pch */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";

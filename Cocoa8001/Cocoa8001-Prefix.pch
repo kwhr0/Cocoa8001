@@ -1,3 +1,11 @@
+// GLSLシェーダー(Shaders.*)を使うときは以下を定義する
+//#define USE_GL3
+
+// Metalを使うときは以下を定義すると共に、
+// ・Metal.frameworkとMetalKit.frameworkを追加する
+// ・Shaders.metalを選択し、InspectorsのTarget Membershipで、Cocoa8001にチェックを入れる
+//#define USE_METAL
+
 #ifdef __OBJC__
 #import <Cocoa/Cocoa.h>
 #import <AudioToolbox/AudioToolbox.h>

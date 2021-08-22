@@ -50,6 +50,27 @@ struct MyGL : SimpleGL {
 };
 #endif
 
+class MyGL;
+
+@interface MyView () {
+	int curAtr, graph, color, cursX, cursY;
+	BOOL _rotation;
+	MyGL *gl;
+	GLfloat *vtx;
+#ifdef USE_METAL
+	id<MTLComputePipelineState> _computePipelineState;
+	id<MTLRenderPipelineState> _renderPipelineState;
+	id<MTLCommandQueue> _commandQueue;
+	id<MTLTexture> _tex;
+	id<MTLBuffer> _chr, _vtx, _prm, _rot;
+#endif
+#ifndef USE_GL3
+	GLfloat *tex;
+	GLuint *vtxcolor;
+#endif
+}
+@end
+
 @implementation MyView
 
 - (void)awakeFromNib {
@@ -285,7 +306,7 @@ struct MyGL : SimpleGL {
 	gl->SetFloat(MyGL::HEIGHT, _height25 ? .08f : .1f);
 	gl->SetMtx44(MyGL::MTX, _rotation ? rotMtx : idtMtx);
 	gl->BindTexture(1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 120, 25, 0, GL_RED, GL_UNSIGNED_BYTE, vram);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 120, 25, 0, GL_RED, GL_UNSIGNED_BYTE, vram);
 	[self drawSub:vram revmask:FALSE secretmask:FALSE];
 #else
 	static const GLfloat black[] = { 0.f, 0.f, 0.f, 1.f }, white[] = { 1.f, 1.f, 1.f, 1.f };
