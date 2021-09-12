@@ -1,2 +1,1 @@
-# Cocoa8001
-PC-8001 emulator for macOS
+http://kwhr0.g2.xrea.com/z80/
