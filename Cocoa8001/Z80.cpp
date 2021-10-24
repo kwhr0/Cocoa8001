@@ -1,6 +1,6 @@
 // Portable Z80 emulation class
-// Copyright (C) Yasuo Kuwahara 2002-2018
-// version 2.10
+// Copyright (C) Yasuo Kuwahara 2002-2021
+// version 2.20
 
 #include "Z80.h"
 
@@ -216,10 +216,10 @@ enum {
 #define fmov(x)			(fp->dm = S8 | Z8 | H0 | PVB | N0, fp->b = Iff2 << LPV, fp->a = (x), fmnt())
 #define fbtr(x)			(fp->dm = H0 | PV | N0, fp->pv = (x), fmnt())
 #define fcp(x, y, z)	(fp->dm = S8 | Z8 | HSUB8 | PV | N1, fp->pv = (x), fp->b = (y), fp->a = (z), fmnt())
-#define fadd(x, y, z)	(fp->dm = S8 | Z8 | HADD8 | VADD8 | N0 | CADD8, fp->b = (x), fp->a = (y), fp->pv = (z), fmnt())
-#define fsub(x, y, z)	(fp->dm = S8 | Z8 | HSUB8 | VSUB8 | N1 | CSUB8, fp->b = (x), fp->a = (y), fp->pv = (z), fmnt())
-#define finc(x, y)		(fp->dm = S8 | Z8 | HADD8 | VADD8 | N0, fp->b = (x), fp->a = (y), fp->pv = 1, fmnt())
-#define fdec(x, y)		(fp->dm = S8 | Z8 | HSUB8 | VSUB8 | N1, fp->b = (x), fp->a = (y), fp->pv = 1, fmnt())
+#define fadd(x, w, y, z)	(fp->dm = S8 | Z8 | HADD8 | VADD8 | N0 | CADD8, fp->b = (x), fp->s = (w), fp->a = (y), fp->pv = (z), fmnt())
+#define fsub(x, w, y, z)	(fp->dm = S8 | Z8 | HSUB8 | VSUB8 | N1 | CSUB8, fp->b = (x), fp->s = (w), fp->a = (y), fp->pv = (z), fmnt())
+#define finc(x, y)		(fp->dm = S8 | Z8 | HADD8 | VADD8 | N0, fp->b = (x), fp->s = 0, fp->a = (y), fp->pv = 1, fmnt())
+#define fdec(x, y)		(fp->dm = S8 | Z8 | HSUB8 | VSUB8 | N1, fp->b = (x), fp->s = 0, fp->a = (y), fp->pv = 1, fmnt())
 #define fand(x)			(fp->dm = S8 | Z8 | H1 | PARITY | N0 | C0, fp->a = (x), fmnt())
 #define fxor(x)			(fp->dm = S8 | Z8 | H0 | PARITY | N0 | C0, fp->a = (x), fmnt())
 #define fadd16(x, y, z)	(fp->dm = HADD16 | N0 | CADD16, fp->b = (x), fp->a = (y), fp->pv = (z), fmnt())
@@ -297,7 +297,7 @@ int32_t Z80::Execute(int32_t n) {
 			SET_8(RST)
 			case 0xfe:
 			tmp = IMM8;
-			fsub(A, A - tmp, 0); // cp n
+			fsub(A, tmp, A - tmp, 0); // cp n
 			break;
 			case 0xf6:
 			fxor(A |= IMM8); // or n
@@ -309,23 +309,25 @@ int32_t Z80::Execute(int32_t n) {
 			fand(A &= IMM8); // and n
 			break;
 			case 0xde: // sbc a,n
-			tmp = IMM8 + (cy = CY);
-			fsub(A, tmp2 = A - tmp, cy);
+			tmp = IMM8;
+			cy = CY;
+			fsub(A, tmp, tmp2 = A - tmp - cy, cy);
 			A = tmp2;
 			break;
 			case 0xd6: // sub n
 			tmp = IMM8;
-			fsub(A, tmp2 = A - tmp, 0);
+			fsub(A, tmp, tmp2 = A - tmp, 0);
 			A = tmp2;
 			break;
 			case 0xce: // adc a,n
-			tmp = IMM8 + (cy = CY);
-			fadd(A, tmp2 = A + tmp, cy);
+			tmp = IMM8;
+			cy = CY;
+			fadd(A, tmp, tmp2 = A + tmp + cy, cy);
 			A = tmp2;
 			break;
 			case 0xc6: // add a,n
 			tmp = IMM8;
-			fadd(A, tmp2 = A + tmp, 0);
+			fadd(A, tmp, tmp2 = A + tmp, 0);
 			A = tmp2;
 			break;
 			case 0xfd:
@@ -367,7 +369,7 @@ int32_t Z80::Execute(int32_t n) {
 				break;
 				case 0x44: case 0x4c: case 0x54: case 0x5c: 
 				case 0x64: case 0x6c: case 0x74: case 0x7c: // neg
-				fsub(0, tmp2 = -A, 0);
+				fsub(0, -A, tmp2 = -A, 0);
 				A = tmp2;
 				break;
 				case 0x4d: // reti
@@ -732,14 +734,14 @@ int32_t Z80::Execute(int32_t n) {
 			COND8(RET_COND)
 			case 0xbe: // cp (hl)
 			tmp = ld8(HL);
-			fsub(A, A - tmp, 0);
+			fsub(A, tmp, A - tmp, 0);
 			if (rofs) {
 				pc++;
 				CLOCK(4);
 			}
 			break;
 			// cp reg
-#define CP(i) case 0xb8 + (i): tmp = REG##i; fsub(A, A - tmp, 0); break;
+#define CP(i) case 0xb8 + (i): tmp = REG##i; fsub(A, tmp, A - tmp, 0); break;
 			SET7(CP)
 			// or (hl)
 			case 0xb6:
@@ -776,8 +778,9 @@ int32_t Z80::Execute(int32_t n) {
 			SET7(AND)
 			// sbc (hl)
 			case 0x9e:
-			tmp = ld8(HL) + (cy = CY);
-			fsub(A, tmp2 = A - tmp, cy);
+			tmp = ld8(HL);
+			cy = CY;
+			fsub(A, tmp, tmp2 = A - tmp - cy, cy);
 			A = tmp2;
 			if (rofs) {
 				pc++;
@@ -785,12 +788,12 @@ int32_t Z80::Execute(int32_t n) {
 			}
 			break;
 			// sbc reg
-#define SBC8(i) case 0x98 + (i): tmp = REG##i + (cy = CY); fsub(A, tmp2 = A - tmp, cy); A = tmp2; break;
+#define SBC8(i) case 0x98 + (i): tmp = REG##i; cy = CY; fsub(A, tmp, tmp2 = A - tmp - cy, cy); A = tmp2; break;
 			SET7(SBC8)
 			// sub (hl)
 			case 0x96:
 			tmp = ld8(HL);
-			fsub(A, tmp2 = A - tmp, 0);
+			fsub(A, tmp, tmp2 = A - tmp, 0);
 			A = tmp2;
 			if (rofs) {
 				pc++;
@@ -798,12 +801,13 @@ int32_t Z80::Execute(int32_t n) {
 			}
 			break;
 			// sub reg
-#define SUB(i) case 0x90 + (i): tmp = REG##i; fsub(A, tmp2 = A - tmp, 0); A = tmp2; break;
+#define SUB(i) case 0x90 + (i): tmp = REG##i; fsub(A, tmp, tmp2 = A - tmp, 0); A = tmp2; break;
 			SET7(SUB)
 			// adc (hl)
 			case 0x8e:
-			tmp = ld8(HL) + (cy = CY);
-			fadd(A, tmp2 = A + tmp, cy);
+			tmp = ld8(HL);
+			cy = CY;
+			fadd(A, tmp, tmp2 = A + tmp + cy, cy);
 			A = tmp2;
 			if (rofs) {
 				pc++;
@@ -811,12 +815,12 @@ int32_t Z80::Execute(int32_t n) {
 			}
 			break;
 			// adc reg
-#define ADC8(i) case 0x88 + (i): tmp = REG##i + (cy = CY); fadd(A, tmp2 = A + tmp, cy); A = tmp2; break;
+#define ADC8(i) case 0x88 + (i): tmp = REG##i; cy = CY; fadd(A, tmp, tmp2 = A + tmp + cy, cy); A = tmp2; break;
 			SET7(ADC8)
 			// add (hl)
 			case 0x86:
 			tmp = ld8(HL);
-			fadd(A, tmp2 = A + tmp, 0);
+			fadd(A, tmp, tmp2 = A + tmp, 0);
 			A = tmp2;
 			if (rofs) {
 				pc++;
@@ -824,7 +828,7 @@ int32_t Z80::Execute(int32_t n) {
 			}
 			break;
 			// add reg
-#define ADD8(i) case 0x80 + (i): tmp = REG##i; fadd(A, tmp2 = A + tmp, 0); A = tmp2; break;
+#define ADD8(i) case 0x80 + (i): tmp = REG##i; fadd(A, tmp, tmp2 = A + tmp, 0); A = tmp2; break;
 			SET7(ADD8)
 			case 0x76:
 #ifdef Z80_DEBUG
@@ -1074,10 +1078,10 @@ int32_t Z80::Execute(int32_t n) {
 	}
 #if CLOCK_EMU
 	while (!halt && clock < n);
-	return clock - n;
+	return halt ? 0 : clock - n;
 #else
 	while (!halt && --n > 0);
-	return -n;
+	return halt ? 0 : -n;
 #endif
 }
 
@@ -1270,13 +1274,13 @@ int Z80::ResolvPV() {
 		case FBEFORE:
 		return p->b & MPV;
 		case FADD8:
-		return (~(p->b ^ p->a - p->b) & 0x80 && (p->b ^ p->a) & 0x80) << LPV;
+		return ((p->b & p->s & ~p->a) | (~p->b & ~p->s & p->a)) >> (7 - LPV) & MPV;
 		case FSUB8:
-		return ((p->b ^ p->b - p->a) & 0x80 && (p->b ^ p->a) & 0x80) << LPV;
+		return ((p->b & ~p->s & ~p->a) | (~p->b & p->s & p->a)) >> (7 - LPV) & MPV;
 		case FADD16:
-		return (~(p->b ^ p->a - p->b) & 0x8000 && (p->b ^ p->a) & 0x8000) << LPV;
+		return ((p->b & p->s & ~p->a) | (~p->b & ~p->s & p->a)) >> (15 - LPV) & MPV;
 		case FSUB16:
-		return ((p->b ^ p->b - p->a) & 0x8000 && (p->b ^ p->a) & 0x8000) << LPV;
+		return ((p->b & ~p->s & ~p->a) | (~p->b & p->s & p->a)) >> (15 - LPV) & MPV;
 		case FPARITY:
 		x = p->a;
 		x ^= x >> 4;

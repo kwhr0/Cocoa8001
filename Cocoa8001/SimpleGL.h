@@ -90,7 +90,7 @@ private:
 @interface SimpleGLLayer : CAOpenGLLayer {
 	BOOL *needsRefreshP;
 }
-@property (nonatomic, assign) NSView *view;
+@property (nonatomic, weak) NSView *view;
 @end
 void SimpleGLLayerSetup(NSView *view, BOOL *needsRefreshP = nil);
 #endif

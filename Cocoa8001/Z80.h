@@ -1,6 +1,6 @@
 // Portable Z80 emulation class
-// Copyright (C) Yasuo Kuwahara 2002-2018
-// version 2.10
+// Copyright (C) Yasuo Kuwahara 2002-2021
+// version 2.20
 
 #ifndef _Z80_H_
 #define _Z80_H_
@@ -97,7 +97,7 @@ struct TraceBuffer {
 struct FlagDecision {
 	uint32_t dm;
 	int32_t b, a;
-	uint16_t pv, cy;
+	uint16_t pv, s;
 };
 
 class Z80 {
