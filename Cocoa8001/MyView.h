@@ -4,9 +4,7 @@
 #define USE_CA
 #endif
 
-#if defined(USE_METAL)
-typedef MTKView MY_SUPER;
-#elif defined(USE_CA)
+#if defined(USE_METAL) || defined(USE_CA)
 typedef NSView MY_SUPER;
 #else
 typedef NSOpenGLView MY_SUPER;

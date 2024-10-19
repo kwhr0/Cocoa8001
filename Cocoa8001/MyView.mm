@@ -2,6 +2,10 @@
 #import "MyDocument.h"
 #import "SimpleGL.h"
 #ifdef USE_METAL
+#import <Metal/Metal.h>
+#import <QuartzCore/CAMetalLayer.h>
+#import <simd/simd.h>
+#import <simd/vector_types.h>
 #import "ShaderTypes.h"
 #endif
 
@@ -58,11 +62,13 @@ class MyGL;
 	MyGL *gl;
 	GLfloat *vtx;
 #ifdef USE_METAL
+	id<MTLDevice> _device;
 	id<MTLComputePipelineState> _computePipelineState;
 	id<MTLRenderPipelineState> _renderPipelineState;
 	id<MTLCommandQueue> _commandQueue;
 	id<MTLTexture> _tex;
-	id<MTLBuffer> _chr, _vtx, _prm, _rot;
+	id<MTLBuffer> _chr, _vtx, _prm, _mtx;
+	CAMetalLayer *_metalLayer;
 #endif
 #ifndef USE_GL3
 	GLfloat *tex;
@@ -77,22 +83,31 @@ class MyGL;
 	[[self window] makeFirstResponder:self];
 	cursY = -1;
 #if defined(USE_METAL)
-	self.paused = YES;
-	self.enableSetNeedsDisplay = YES;
-	self.device = MTLCreateSystemDefaultDevice();
-	_chr = [self.device newBufferWithLength:80 * 25 * sizeof(Chr) options:MTLResourceStorageModeShared];
-	_vtx = [self.device newBufferWithLength:80 * 25 * 6 * sizeof(Vtx) options:MTLResourceStorageModePrivate];
-	_prm = [self.device newBufferWithLength:sizeof(Prm) options:MTLResourceStorageModeShared];
-	_rot = [self.device newBufferWithLength:sizeof(bool) options:MTLResourceStorageModeShared];
-	id<MTLLibrary> lib = [self.device newDefaultLibrary];
+	_device = MTLCreateSystemDefaultDevice();
+	_chr = [_device newBufferWithLength:80 * 25 * sizeof(Chr) options:MTLResourceStorageModeShared];
+	_vtx = [_device newBufferWithLength:80 * 25 * 6 * sizeof(Vtx) options:MTLResourceStorageModePrivate];
+	_prm = [_device newBufferWithLength:sizeof(Prm) options:MTLResourceStorageModeShared];
+	_mtx = [_device newBufferWithLength:sizeof(simd_float2x2) options:MTLResourceStorageModeShared];
+	id<MTLLibrary> lib = [_device newDefaultLibrary];
 	id<MTLFunction> func = [lib newFunctionWithName:@"geometryShader"];
-	_computePipelineState = [self.device newComputePipelineStateWithFunction:func error:nil];
+	_computePipelineState = [_device newComputePipelineStateWithFunction:func error:nil];
 	MTLRenderPipelineDescriptor *pd = [[MTLRenderPipelineDescriptor alloc] init];
 	pd.vertexFunction = [lib newFunctionWithName:@"vertexShader"];
 	pd.fragmentFunction = [lib newFunctionWithName:@"fragmentShader"];
-	pd.colorAttachments[0].pixelFormat = self.colorPixelFormat;
-	_renderPipelineState = [self.device newRenderPipelineStateWithDescriptor:pd error:nil];
-	_commandQueue = [self.device newCommandQueue];
+	pd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+	_renderPipelineState = [_device newRenderPipelineStateWithDescriptor:pd error:nil];
+//
+	self.wantsLayer = YES;
+	_metalLayer = [CAMetalLayer layer];
+	_metalLayer.device = _device;
+	_metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	_metalLayer.framebufferOnly = YES;
+	_metalLayer.frame = self.layer.frame;
+	_metalLayer.drawableSize = self.bounds.size;
+	//_metalLayer.displaySyncEnabled = YES; // 10.13-; default value is YES
+	[self.layer addSublayer: _metalLayer];
+//
+	_commandQueue = [_device newCommandQueue];
 #elif defined(USE_CA)
 	SimpleGLLayerSetup(self, &_needsRefresh);
 #endif
@@ -143,7 +158,7 @@ class MyGL;
 			}
 	}
 #if defined(USE_METAL)
-	_tex = [self.device newTextureWithDescriptor:[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:TEX_X height:TEX_Y mipmapped:FALSE]];
+	_tex = [_device newTextureWithDescriptor:[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:TEX_X height:TEX_Y mipmapped:FALSE]];
 	[_tex replaceRegion:MTLRegionMake3D(0, 0, 0, TEX_X, TEX_Y, 1) mipmapLevel:0 withBytes:buf bytesPerRow:4 * TEX_X];
 #elif defined(USE_GL3)
 	gl = new MyGL;
@@ -259,12 +274,17 @@ class MyGL;
 	_needsRefresh = false;
 	uint8 *vram = self.document.vram;
 #ifdef USE_METAL
+	static const float mtx[][4] = {
+		{ 1.f / (640 / 2), 0, 0, 1.f / (400 / 2) },
+		{ 0, 1.f / (640 / 2), -1.f / (400 / 2), 0 }
+	};
 	int w = _width80 ? 80 : 40, h = _height25 ? 25 : 20;
 	if (!_tex) [self prepare];
 	[self drawSub:vram revmask:FALSE secretmask:FALSE];
 	((Prm *)_prm.contents)->pixW = _width80 ? 8 : 16;
 	((Prm *)_prm.contents)->pixH = _height25 ? 16 : 20;
-	*(bool *)_rot.contents = _rotation;
+	memcpy(_mtx.contents, mtx[_rotation != 0], sizeof(mtx[0]));
+//
 	id<MTLCommandBuffer> cb = [_commandQueue commandBuffer];
 	id<MTLComputeCommandEncoder> cce = [cb computeCommandEncoder];
 	[cce setComputePipelineState:_computePipelineState];
@@ -273,19 +293,20 @@ class MyGL;
 	[cce setBuffer:_prm offset:0 atIndex:2];
 	[cce dispatchThreadgroups:MTLSizeMake(h, 1, 1) threadsPerThreadgroup:MTLSizeMake(w, 1, 1)];
 	[cce endEncoding];
-	[cb commit];
-	//
-	cb = [_commandQueue commandBuffer];
-	if (self.currentRenderPassDescriptor) {
-		id<MTLRenderCommandEncoder> rce = [cb renderCommandEncoderWithDescriptor:self.currentRenderPassDescriptor];
-		[rce setViewport:(MTLViewport){ 0.0, 0.0, self.drawableSize.width, self.drawableSize.height, -1.0, 1.0 }];
+//
+	id<CAMetalDrawable> drawable = [_metalLayer nextDrawable];
+	if (drawable) {
+		MTLRenderPassDescriptor *desc = [MTLRenderPassDescriptor renderPassDescriptor];
+		desc.colorAttachments[0].texture = drawable.texture;
+		id<MTLRenderCommandEncoder> rce = [cb renderCommandEncoderWithDescriptor:desc];
+		[rce setViewport:(MTLViewport){ 0, 0, _metalLayer.drawableSize.width, _metalLayer.drawableSize.height, -1.f, 1.f }];
 		[rce setRenderPipelineState:_renderPipelineState];
 		[rce setVertexBuffer:_vtx offset:0 atIndex:0];
-		[rce setVertexBuffer:_rot offset:0 atIndex:1];
+		[rce setVertexBuffer:_mtx offset:0 atIndex:1];
 		[rce setFragmentTexture:_tex atIndex:0];
 		[rce drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 * w * h];
 		[rce endEncoding];
-		[cb presentDrawable:self.currentDrawable];
+		[cb presentDrawable:drawable];
 	}
 	[cb commit];
 #else
@@ -334,11 +355,15 @@ class MyGL;
 
 - (void)setRotation:(BOOL)f {
 	NSRect rect = self.window.frame;
-    CGFloat titleHeight = rect.size.height - self.frame.size.height;
+	CGFloat titleHeight = rect.size.height - self.frame.size.height;
 	_rotation = f;
 	rect.size.width = _rotation ? 400 : 640;
-    rect.size.height = (_rotation ? 640 : 400) + titleHeight;
+	rect.size.height = (_rotation ? 640 : 400) + titleHeight;
 	[self.window setFrame:rect display:NO];
+#ifdef USE_METAL
+	_metalLayer.frame = self.frame;
+	_metalLayer.drawableSize = self.frame.size;
+#endif
 }
 
 @end
